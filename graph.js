@@ -41,6 +41,17 @@ const legend = d3.legendColor()
     .shapePadding(10)
     .scale(colour);
 
+const tooltip = d3.tip()
+    .attr('class', 'tip card')
+    .html(d => {
+       let content = `<div class="name">${d.data.name}</div>`;
+       content += `<div class="cost">${d.data.cost}</div>`;
+       content += `<div class="delete">Click slice to delete</div>`;
+       return content;
+    });
+
+graph.call(tooltip);
+
 // update function
 const update = (data) => {
 
@@ -77,6 +88,17 @@ const update = (data) => {
         })
         .transition().duration(750)
             .attrTween('d', arcTweenEnter);
+
+    graph.selectAll('path')
+        .on('mouseover', (d, i, n) => {
+            tooltip.show(d, n[i]);
+            handleMouseoverEvent(d, i, n);
+        })
+        .on('mouseout', (d, i, n) => {
+            tooltip.hide();
+            handleMouseoutEvent(d, i, n);
+        })
+        .on('click', handleMouseclickEvent);
 }
 
 var data = [];
@@ -127,4 +149,21 @@ function arcTweenUpdate(d){
         return arcPath(i(t));
     }
 
+}
+
+const handleMouseoverEvent = (d, i, n) => {
+    d3.select(n[i])
+    .transition('changeSliceFill').duration(300)
+        .attr('fill', '#fff');
+}
+
+const handleMouseoutEvent = (d, i, n) => {
+    d3.select(n[i])
+    .transition('changeSliceFill').duration(300)
+        .attr('fill', colour(d.data.name));
+}
+
+const handleMouseclickEvent = (d) => {
+    const id = d.data.id;
+    db.collection('expenses').doc(id).delete();
 }
