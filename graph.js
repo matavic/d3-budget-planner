@@ -29,17 +29,41 @@ const angles = pie([
 const arcPath = d3.arc()
     .outerRadius(dims.radius)
     .innerRadius(dims.radius / 2);
+
+const colour = d3.scaleOrdinal(d3['schemeSet3'])
 // update function
 const update = (data) => {
+
+    // update color scheme domain
+    colour.domain(data.map(d => d.name))
+
     const paths = graph.selectAll('path')
         .data(pie(data));
+
+    // handle the exit selection
+
+    paths.exit()
+        .transition().duration(750)
+        .attrTween('d', arcTweenExit)
+        .remove();
+
+    // handle the current DOM Path Updates
+
+    paths.attr('d', arcPath)
+        .transition().duration(750)
+        .attrTween('d', arcTweenUpdate);
 
     paths.enter()
         .append('path')
         .attr('class', 'arc')
-        .attr('d', arcPath)
         .attr('stroke', '#fff')
-        .attr('stroke-width', 3);
+        .attr('stroke-width', 3)
+        .attr('fill', d => colour(d.data.name))
+        .each(function(d){
+            this._current = d
+        })
+        .transition().duration(750)
+            .attrTween('d', arcTweenEnter);
 }
 
 var data = [];
@@ -63,3 +87,31 @@ db.collection('expenses').onSnapshot(res => {
     });
     update(data);
 });
+
+const arcTweenEnter = (d) => {
+    const i = d3.interpolate(d.endAngle, d.startAngle);
+
+    return function(t){
+        d.startAngle = i(t);
+        return arcPath(d);
+    }
+}
+const arcTweenExit = (d) => {
+    const i = d3.interpolate(d.startAngle, d.endAngle);
+
+    return function(t){
+        d.startAngle = i(t);
+        return arcPath(d);
+    }
+}
+
+function arcTweenUpdate(d){
+
+    var i = d3.interpolate(this._current, d);
+    this._current =  i(1);
+
+    return function(t){
+        return arcPath(i(t));
+    }
+
+}
